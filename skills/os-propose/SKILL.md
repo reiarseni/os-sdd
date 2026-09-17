@@ -20,15 +20,11 @@ change's artifacts. For requests whose decisions cascade into each other,
 
 Before step 1, read `interview.md`, `proposal-flow.md`, `proposal-templates.md`, `session-options.md` and `next-step.md`.
 
-## 1. Setup
+## 1. Before the interview
 
-See "Setup" and "Detect an existing change or spec" in `proposal-flow.md`.
+See "Before the interview" in `proposal-flow.md`.
 
-## 2. Web research question
-
-Ask the "Web research question" from `session-options.md` before round 1.
-
-## 3. Interview by topic, deep-style
+## 2. Interview by topic, deep-style
 
 Follow `interview.md`. Order rounds by theme, 2–4 questions per round (one
 AskUserQuestion call):
@@ -41,19 +37,8 @@ AskUserQuestion call):
    unconfirmed after round 3. See "Stopping" in `interview.md` for when to
    close early and the round-10 ceiling.
 
-## 4. TDD question
+Stop once the checklist is resolved.
 
-Once the checklist is resolved, ask the "TDD question" from
-`session-options.md`.
+## 3. After the interview
 
-## 5. Confirm before writing
-
-See "Confirm before writing" in `proposal-flow.md`.
-
-## 6. Write the artifacts
-
-See "Write the artifacts" in `proposal-flow.md`.
-
-## 7. Close
-
-See "Close" in `proposal-flow.md`.
+See "After the interview" in `proposal-flow.md`.

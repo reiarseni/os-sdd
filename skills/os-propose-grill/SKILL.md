@@ -19,16 +19,11 @@ Pocock-style until nothing's left, then writes the change's artifacts.
 
 Before step 1, read `interview.md`, `proposal-flow.md`, `proposal-templates.md`, `session-options.md` and `next-step.md`.
 
-## 1. Setup
+## 1. Before the interview
 
-See "Setup" and "Detect an existing change or spec" in `proposal-flow.md`.
+See "Before the interview" in `proposal-flow.md`.
 
-## 2. Web research question
-
-Ask the "Web research question" from `session-options.md` before the first
-round.
-
-## 3. Grill the frontier
+## 2. Grill the frontier
 
 Build the decision tree implied by the checklist in `interview.md`, then
 work it round after round:
@@ -54,19 +49,8 @@ work it round after round:
   decision and `n/a` back to the user before moving to the pre-summary — no
   unconfirmed assumption survives past this point.
 
-## 4. TDD question
+Stop once the frontier is empty and confirmed.
 
-Once the frontier is empty and confirmed, ask the "TDD question" from
-`session-options.md`.
+## 3. After the interview
 
-## 5. Confirm before writing
-
-See "Confirm before writing" in `proposal-flow.md`.
-
-## 6. Write the artifacts
-
-See "Write the artifacts" in `proposal-flow.md`.
-
-## 7. Close
-
-See "Close" in `proposal-flow.md`.
+See "After the interview" in `proposal-flow.md`.
