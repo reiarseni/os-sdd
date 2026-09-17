@@ -12,13 +12,14 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "hooks"))
 sys.path.insert(0, str(ROOT / "scripts"))
 import os_state  # noqa: E402
-from fingerprint import compute_fingerprint  # noqa: E402
+from fingerprint import compute_fingerprint, compute_artifacts_fingerprint  # noqa: E402
 
-# Fixed shapes captured from `openspec` 1.3.1 --json output.
+# Fixed shapes captured from `openspec` 1.13.1 --json output.
 STATUS_JSON_ALL_DONE = {
     "changeName": "demo",
     "schemaName": "spec-driven",
     "isComplete": True,
+    "isPlanningComplete": True,
     "applyRequires": ["tasks"],
     "artifacts": [
         {"id": "proposal", "outputPath": "proposal.md", "status": "done"},
@@ -32,6 +33,7 @@ STATUS_JSON_TASKS_PENDING = {
     "changeName": "demo",
     "schemaName": "spec-driven",
     "isComplete": False,
+    "isPlanningComplete": True,
     "applyRequires": ["tasks"],
     "artifacts": [
         {"id": "proposal", "outputPath": "proposal.md", "status": "done"},
@@ -40,6 +42,25 @@ STATUS_JSON_TASKS_PENDING = {
         {"id": "tasks", "outputPath": "tasks.md", "status": "pending"},
     ],
 }
+
+STATUS_JSON_PLANNING_INCOMPLETE = {
+    "changeName": "demo",
+    "schemaName": "spec-driven",
+    "isComplete": False,
+    "isPlanningComplete": False,
+    "applyRequires": ["tasks"],
+    "artifacts": [
+        {"id": "proposal", "outputPath": "proposal.md", "status": "done"},
+        {"id": "design", "outputPath": "design.md", "status": "pending"},
+        {"id": "specs", "outputPath": "specs/**/*.md", "status": "pending"},
+        {"id": "tasks", "outputPath": "tasks.md", "status": "pending"},
+    ],
+}
+
+
+def write_ready_review(change_dir: Path) -> None:
+    fingerprint = compute_artifacts_fingerprint(change_dir)
+    (change_dir / "REVIEW.md").write_text(f"Verdict: READY\nFingerprint: {fingerprint}\n")
 
 
 def run(cmd: list[str], cwd: Path) -> None:
@@ -79,30 +100,54 @@ class OsStateTests(unittest.TestCase):
     def tearDown(self) -> None:
         self._tmp.cleanup()
 
-    def test_missing_apply_required_artifact_is_propose_phase(self) -> None:
+    def test_incomplete_planning_is_propose_phase(self) -> None:
         make_change(self.root, "demo")
-        status = dict(STATUS_JSON_ALL_DONE, artifacts=[
-            {"id": "proposal", "status": "done"},
-            {"id": "design", "status": "done"},
-            {"id": "specs", "status": "done"},
-            {"id": "tasks", "status": "pending"},
-        ])
         list_json = {"changes": [{"name": "demo", "completedTasks": 0, "totalTasks": 0}]}
-        with patch.object(os_state, "_run_json", side_effect=fake_run_json(list_json, status)):
+        with patch.object(
+            os_state, "_run_json", side_effect=fake_run_json(list_json, STATUS_JSON_PLANNING_INCOMPLETE)
+        ):
             result = os_state.change_phase(self.root, "demo")
         self.assertEqual(result["phase"], "propose")
         self.assertEqual(result["skill"], "/os-propose")
 
-    def test_pending_tasks_is_apply_phase(self) -> None:
+    def test_pending_tasks_without_fresh_review_is_review_phase(self) -> None:
         make_change(self.root, "demo")
         list_json = {"changes": [{"name": "demo", "completedTasks": 0, "totalTasks": 1}]}
-        with patch.object(os_state, "_run_json", side_effect=fake_run_json(list_json, STATUS_JSON_ALL_DONE)):
+        with patch.object(os_state, "_run_json", side_effect=fake_run_json(list_json, STATUS_JSON_TASKS_PENDING)):
+            result = os_state.change_phase(self.root, "demo")
+        self.assertEqual(result["phase"], "review")
+        self.assertEqual(result["skill"], "/os-review")
+
+    def test_pending_tasks_with_fresh_ready_review_is_apply_phase(self) -> None:
+        change_dir = make_change(self.root, "demo")
+        write_ready_review(change_dir)
+        list_json = {"changes": [{"name": "demo", "completedTasks": 0, "totalTasks": 1}]}
+        with patch.object(os_state, "_run_json", side_effect=fake_run_json(list_json, STATUS_JSON_TASKS_PENDING)):
+            result = os_state.change_phase(self.root, "demo")
+        self.assertEqual(result["phase"], "apply")
+        self.assertEqual(result["skill"], "/os-apply")
+
+    def test_pending_tasks_tdd_mode_with_fresh_review_is_apply_phase(self) -> None:
+        change_dir = make_change(self.root, "demo")
+        (change_dir / "proposal.md").write_text("Implementation: tdd\n")
+        write_ready_review(change_dir)
+        list_json = {"changes": [{"name": "demo", "completedTasks": 0, "totalTasks": 1}]}
+        with patch.object(os_state, "_run_json", side_effect=fake_run_json(list_json, STATUS_JSON_TASKS_PENDING)):
             result = os_state.change_phase(self.root, "demo")
         self.assertEqual(result["phase"], "apply")
         self.assertEqual(result["skill"], "/os-apply")
 
     def test_all_tasks_done_no_verify_is_verify_phase(self) -> None:
         make_change(self.root, "demo")
+        list_json = {"changes": [{"name": "demo", "completedTasks": 1, "totalTasks": 1}]}
+        with patch.object(os_state, "_run_json", side_effect=fake_run_json(list_json, STATUS_JSON_ALL_DONE)):
+            result = os_state.change_phase(self.root, "demo")
+        self.assertEqual(result["phase"], "verify")
+        self.assertEqual(result["skill"], "/os-verify")
+
+    def test_all_tasks_done_with_review_is_verify_phase_never_review(self) -> None:
+        change_dir = make_change(self.root, "demo")
+        write_ready_review(change_dir)
         list_json = {"changes": [{"name": "demo", "completedTasks": 1, "totalTasks": 1}]}
         with patch.object(os_state, "_run_json", side_effect=fake_run_json(list_json, STATUS_JSON_ALL_DONE)):
             result = os_state.change_phase(self.root, "demo")
@@ -173,6 +218,40 @@ class OsStateTests(unittest.TestCase):
             "## Open decisions\n\n(none — this stretch is fully resolved)\n"
         )
         self.assertEqual(os_state.open_maps(self.root), [])
+
+    def test_compute_state_calls_status_all_and_list_once_each(self) -> None:
+        for name in ("alpha", "beta", "gamma"):
+            make_change(self.root, name)
+        list_json = {
+            "changes": [
+                {"name": "alpha", "completedTasks": 0, "totalTasks": 1},
+                {"name": "beta", "completedTasks": 0, "totalTasks": 1},
+                {"name": "gamma", "completedTasks": 0, "totalTasks": 1},
+            ]
+        }
+        status_all_json = {
+            "changes": [
+                dict(STATUS_JSON_TASKS_PENDING, changeName="alpha"),
+                dict(STATUS_JSON_TASKS_PENDING, changeName="beta"),
+                dict(STATUS_JSON_TASKS_PENDING, changeName="gamma"),
+            ]
+        }
+        calls = []
+
+        def fake(cmd: list[str], cwd: Path):
+            calls.append(tuple(cmd))
+            if cmd[1] == "list":
+                return list_json
+            if cmd[1] == "status" and "--all" in cmd:
+                return status_all_json
+            raise AssertionError(f"unexpected per-change call: {cmd}")
+
+        with patch.object(os_state, "_run_json", side_effect=fake):
+            os_state.compute_state(self.root)
+
+        self.assertEqual(calls.count(("openspec", "list", "--json")), 1)
+        self.assertEqual(calls.count(("openspec", "status", "--all", "--json")), 1)
+        self.assertEqual(len(calls), 2)
 
     def test_cli_failure_falls_back_to_disk(self) -> None:
         make_change(self.root, "demo")

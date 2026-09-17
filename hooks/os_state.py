@@ -18,7 +18,7 @@ for _candidate in (_here, _here.parent / "scripts"):
     if (_candidate / "fingerprint.py").exists():
         sys.path.insert(0, str(_candidate))
         break
-from fingerprint import compute_fingerprint  # noqa: E402
+from fingerprint import compute_fingerprint, compute_artifacts_fingerprint  # noqa: E402
 
 
 def _run_json(cmd: list[str], cwd: Path) -> dict | None:
@@ -59,10 +59,21 @@ def list_changes(project_root: Path) -> list[dict]:
     return changes
 
 
-def artifacts_status(project_root: Path, name: str) -> dict:
-    data = _run_json(["openspec", "status", "--change", name, "--json"], project_root)
-    if data is not None:
-        return data
+def status_for_all(project_root: Path) -> dict[str, dict] | None:
+    data = _run_json(["openspec", "status", "--all", "--json"], project_root)
+    if data is None:
+        return None
+    return {c["changeName"]: c for c in data.get("changes", [])}
+
+
+def artifacts_status(project_root: Path, name: str, batch: dict[str, dict] | None = None) -> dict:
+    if batch is not None:
+        if name in batch:
+            return batch[name]
+    else:
+        data = _run_json(["openspec", "status", "--change", name, "--json"], project_root)
+        if data is not None:
+            return data
 
     change_dir = project_root / "openspec" / "changes" / name
     artifacts = []
@@ -73,19 +84,6 @@ def artifacts_status(project_root: Path, name: str) -> dict:
     specs_status = "done" if specs_dir.exists() and any(specs_dir.rglob("*.md")) else "pending"
     artifacts.append({"id": "specs", "status": specs_status})
     return {"changeName": name, "applyRequires": ["tasks"], "artifacts": artifacts}
-
-
-def implementation_mode(project_root: Path, name: str) -> str:
-    proposal = project_root / "openspec" / "changes" / name / "proposal.md"
-    if not proposal.exists():
-        return "standard"
-    for line in proposal.read_text().splitlines():
-        stripped = line.strip()
-        if stripped == "Implementation: tdd":
-            return "tdd"
-        if stripped == "Implementation: standard":
-            return "standard"
-    return "standard"
 
 
 def verify_is_fresh(project_root: Path, name: str) -> bool:
@@ -100,21 +98,45 @@ def verify_is_fresh(project_root: Path, name: str) -> bool:
     return compute_fingerprint(project_root) == fingerprint.group(1)
 
 
-def change_phase(project_root: Path, name: str) -> dict:
-    status = artifacts_status(project_root, name)
+def review_is_fresh(project_root: Path, name: str) -> bool:
+    change_dir = project_root / "openspec" / "changes" / name
+    review_md = change_dir / "REVIEW.md"
+    if not review_md.exists():
+        return False
+    text = review_md.read_text()
+    verdict = re.search(r"^Verdict:\s*(\S+)", text, re.MULTILINE)
+    fingerprint = re.search(r"^Fingerprint:\s*(\S+)", text, re.MULTILINE)
+    if not verdict or not fingerprint or verdict.group(1) != "READY":
+        return False
+    return compute_artifacts_fingerprint(change_dir) == fingerprint.group(1)
+
+
+def planning_is_complete(status: dict) -> bool:
+    if "isPlanningComplete" in status:
+        return bool(status["isPlanningComplete"])
     apply_requires = status.get("applyRequires", ["tasks"])
     artifacts = {a["id"]: a["status"] for a in status.get("artifacts", [])}
-    missing = [a for a in apply_requires if artifacts.get(a) != "done"]
-    if missing:
+    return all(artifacts.get(a) == "done" for a in apply_requires)
+
+
+def change_phase(
+    project_root: Path,
+    name: str,
+    batch: dict[str, dict] | None = None,
+    task_counts: dict | None = None,
+) -> dict:
+    status = artifacts_status(project_root, name, batch=batch)
+    if not planning_is_complete(status):
         return {"name": name, "phase": "propose", "skill": "/os-propose"}
 
-    counts = next((c for c in list_changes(project_root) if c["name"] == name), {})
-    total = counts.get("totalTasks", 0)
-    done = counts.get("completedTasks", 0)
+    if task_counts is None:
+        task_counts = next((c for c in list_changes(project_root) if c["name"] == name), {})
+    total = task_counts.get("totalTasks", 0)
+    done = task_counts.get("completedTasks", 0)
     if total > done:
-        mode = implementation_mode(project_root, name)
-        skill = "/os-apply-tdd" if mode == "tdd" else "/os-apply"
-        return {"name": name, "phase": "apply", "skill": skill}
+        if review_is_fresh(project_root, name):
+            return {"name": name, "phase": "apply", "skill": "/os-apply"}
+        return {"name": name, "phase": "review", "skill": "/os-review"}
 
     if verify_is_fresh(project_root, name):
         return {"name": name, "phase": "archive", "skill": "/os-verify"}
@@ -173,9 +195,11 @@ def open_explorations(project_root: Path) -> list[str]:
 
 
 def compute_state(project_root: Path) -> dict:
+    entries = list_changes(project_root)
+    batch = status_for_all(project_root)
     changes = []
-    for entry in list_changes(project_root):
-        phase = change_phase(project_root, entry["name"])
+    for entry in entries:
+        phase = change_phase(project_root, entry["name"], batch=batch, task_counts=entry)
         phase["handoff"] = has_handoff(project_root, entry["name"])
         changes.append(phase)
     return {
