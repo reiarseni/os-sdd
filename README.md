@@ -1,5 +1,7 @@
 # os-sdd
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A family of 8 `os-*` skills that drives the [OpenSpec](https://github.com/)
 CLI (`spec-driven` schema) **without modifying it**. Skills never invoke each
 other: each one ends with a `Next: /os-<skill> <arg>` line, and the user
