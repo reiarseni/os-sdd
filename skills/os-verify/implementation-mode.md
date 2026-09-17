@@ -7,9 +7,7 @@ Contract shared by every `os-*` skill that needs to know whether a change is
 2. Grep it **literally** for a line matching `Implementation: tdd` or
    `Implementation: standard`. Do not infer the mode from prose elsewhere in
    the file — only that literal line counts.
-3. If the line is missing, assume `standard` and tell the user:
-   `proposal.md has no "Implementation:" line — assuming standard.`
-4. If a skill built for one mode is invoked against a change declared in the
-   other mode (`os-apply` on a `tdd` change, `os-apply-tdd` on a `standard`
-   one), warn and name the matching skill, then only continue if the user
-   confirms. Never switch mode silently.
+3. If the line is missing, ask with `AskUserQuestion`:
+   `proposal.md has no "Implementation:" line — which mode is this change?`,
+   options `standard` and `tdd`. Use the answer as the mode for this
+   session — don't guess it.

@@ -10,6 +10,7 @@ metadata:
     - next-step.md
   shared-scripts:
     - fingerprint.py
+    - diff_base.py
 ---
 
 # os-verify
@@ -46,34 +47,30 @@ citing the failing command and its real output, then go straight to step 7
 
 ## 4. Two-stage subagent review
 
-Only if step 3 passed. From the project root, compute the diff base and
+Only if step 3 passed. From the project root, get the diff base and build
 the diff into a temp file:
 
 ```bash
-DEFAULT="$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null)"
-[ -z "$DEFAULT" ] && git rev-parse --verify -q main >/dev/null && DEFAULT=main
-[ -z "$DEFAULT" ] && git rev-parse --verify -q master >/dev/null && DEFAULT=master
-BASE=""
-if [ -n "$DEFAULT" ] && [ "$(git symbolic-ref --short -q HEAD)" != "${DEFAULT#origin/}" ]; then
-  BASE="$(git merge-base HEAD "$DEFAULT")"
-fi
-[ -z "$BASE" ] && BASE=HEAD
+BASE="$(python3 "${CLAUDE_SKILL_DIR}/scripts/diff_base.py" <change> 2>&1 >/tmp/diff_base_out)"
+BASE="$(grep -o 'BASE=.*' /tmp/diff_base_out | cut -d= -f2)"
 PKG="$(mktemp)"
 echo "BASE=$BASE PKG=$PKG"
 git diff "$BASE" > "$PKG"
-git ls-files -o --exclude-standard | while read -r f; do git diff --no-index /dev/null "$f" >> "$PKG"; done
+git ls-files -o --exclude-standard | while read -r f; do [ -f "$f" ] && git diff --no-index /dev/null "$f" >> "$PKG"; done
 { git diff --name-only "$BASE"; git ls-files -o --exclude-standard; } | sort -u
 ```
 
 Run it as one command: shell variables don't survive between commands, so
-use the printed `PKG=` path from here on. If it printed `BASE=HEAD` (you're
-on the default branch, or none was found), tell the user the diff only
-includes uncommitted changes and new files. The last lines are the touched
-files.
+use the printed `PKG=` path from here on. `diff_base.py` prints a warning to
+stderr if the change's `.openspec.yaml` was never committed on this branch
+— when it does, tell the user the diff only covers uncommitted changes and
+new files. The last lines of the command are the touched files.
 
 Append to that file the delta specs' scenarios, every task's `— covers:`,
-the seams table (if `tdd`) and the touched-files list. Both subagents'
-prompts are in `REVIEW-LENSES.md`; give each the file's path.
+the seams table (if `tdd`), the test files cited in `covers:`/seams (so the
+fidelity subagent can see the tests, not just infer them from the diff), and
+the touched-files list. Both subagents' prompts are in `REVIEW-LENSES.md`;
+give each the file's path.
 
 1. **Fidelity subagent** (Agent tool): maps every scenario to its evidence.
    If it reports any blocking finding, skip the quality subagent.
@@ -101,6 +98,5 @@ offer archiving — list what's missing and go to step 7.
 ## 7. Close
 
 This is the only step that ends the skill. With `BLOCK`, end with
-`Next: /os-apply <name>` or `Next: /os-apply-tdd <name>` per the change's
-mode. After archiving, or if the user declined to archive a `PASS`, omit the
-`Next:` line.
+`Next: /os-apply <name>`. After archiving, or if the user declined to
+archive a `PASS`, omit the `Next:` line.

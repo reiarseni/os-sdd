@@ -8,7 +8,9 @@ package instead of letting them read more files.
 
 > You are verifying that an implementation satisfies its specification. You
 > are given a review package (scenarios, task→scenario coverage, seams
-> table, touched files, diff) — work only from it, do not read other files
+> table, touched files, diff, and the full content of every test file cited
+> in a task's `— covers:` or the seams table, even ones outside the diff
+> because they already existed) — work only from it, do not read other files
 > in the repository and do not run any command.
 >
 > For every scenario listed, find its evidence in the package: a test that
