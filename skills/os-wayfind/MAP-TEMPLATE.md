@@ -31,9 +31,8 @@ Blocked by: <other open decision, or none>
 
 ## Stretches
 
-<!-- A stretch is a coherent slice of the destination whose decisions are
-     all resolved. `Change:` is filled in once `/os-propose` links back
-     with a `Map:` line in that change's proposal.md. -->
+<!-- `Change:` is filled in once `/os-propose` links back with a `Map:`
+     line in that change's proposal.md. -->
 
 ### <stretch>
 
