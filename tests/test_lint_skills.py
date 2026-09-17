@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Tests for tests/lint_skills.py — covers os-configuration/Copia divergente,
 Script con ruta relativa, Pasos tomados de otra skill, Frase repetida en
-SKILL.md y shared, Sección inexistente and Clave compartida fuera de metadata."""
+SKILL.md y un fichero de apoyo, Frase repetida entre dos SKILL.md, Sección
+inexistente and Clave compartida fuera de metadata."""
 import sys
 import tempfile
 import unittest
@@ -118,6 +119,16 @@ class LintSkillsTest(unittest.TestCase):
         self.assertEqual(len(errors), 1, errors)
         self.assertIn("SKILL.md and contract.md both say", errors[0])
         self.assertIn("never run the full test suite while applying a change's tasks", errors[0])
+
+    def test_repeated_phrase_in_skill_and_undeclared_file_fails(self):
+        """The rule covers every supporting *.md, not only metadata.shared ones."""
+        rule = "Never run the full test suite while applying a change's tasks."
+        errors = self.lint(
+            body=f"## 1. Apply\n\nSee `local.md`. {rule}",
+            files={"local.md": f"# Local\n\n{rule}\n"},
+        )
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn("SKILL.md and local.md both say", errors[0])
 
     def test_phrase_shorter_than_eight_words_passes(self):
         contract = "# Contract\n\nRun the tests for the files you touched.\n"
@@ -245,6 +256,38 @@ class LintSkillsTest(unittest.TestCase):
         self.assertTrue(
             any("os-explore" in e and "Before step 1" in e and "session-options.md" in e for e in errors), errors
         )
+
+
+class CrossSkillDuplicationTest(unittest.TestCase):
+    def errors(self, first_body: str, second_body: str) -> list[str]:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            first = make_skill(root, body=first_body, name="os-first")
+            second = make_skill(root, body=second_body, name="os-second")
+            return lint_skills.cross_skill_duplication_errors([first, second])
+
+    def test_same_rule_in_two_skills_fails(self):
+        rule = "Ask the user before creating any artifact in the change directory."
+        errors = self.errors(f"## 1. Start\n\n{rule}", f"## 1. Start\n\n{rule.upper()}")
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn("os-first and os-second: both SKILL.md say", errors[0])
+        self.assertIn("ask the user before creating any artifact", errors[0])
+
+    def test_shared_scaffolding_passes(self):
+        """Headings, the "Before step 1" line and pointer-only lines are exempt."""
+        scaffolding = (
+            "Before step 1, read `interview.md`, `proposal-flow.md`, `session-options.md` and `next-step.md`.\n\n"
+            '## 1. Before the interview\n\nSee "Before the interview" in `proposal-flow.md`.\n\n'
+        )
+        errors = self.errors(
+            scaffolding + "## 2. Interview\n\nOrder the rounds by theme, two to four questions each.",
+            scaffolding + "## 2. Grill\n\nWork the frontier round after round until nothing is left.",
+        )
+        self.assertEqual(errors, [])
+
+    def test_different_skills_pass(self):
+        errors = self.errors("## 1. Map\n\nResolve exactly one open decision per invocation.", "## 1. Verify\n\nRun the full suite and cite its real output.")
+        self.assertEqual(errors, [])
 
 
 if __name__ == "__main__":

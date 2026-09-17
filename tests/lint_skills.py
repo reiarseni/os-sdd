@@ -19,8 +19,12 @@
 - no file borrows steps from another skill ("same as `os-apply`",
   "identical structure to `os-propose` step 4"): the other skill isn't
   loaded, so shared steps belong in shared/
-- no rule lives twice: a normalized run of 8 or more words must not appear
-  both in SKILL.md and in one of its `metadata.shared` files
+- no rule lives twice inside a skill: a normalized run of 8 or more words
+  must not appear both in SKILL.md and in one of its supporting *.md files
+- no rule lives twice across skills: the same run must not appear in two
+  different SKILL.md files either — headings, the "Before step 1" line and
+  lines that only point at a section ('See "X" in `y.md`.') are exempt,
+  since those are scaffolding rather than rules
 - section references resolve: `"<Section>" in <file>.md` and
   `see <file>.md ("<Section>")` need a heading with that text in the skill's
   copy of <file>.md, `"<Section>" below/above` one in the same file, and a
@@ -125,6 +129,44 @@ def find_repeated_phrases(text: str, other: str, size: int = REPEATED_PHRASE_WOR
     if run_start is not None:
         phrases.append(" ".join(words[run_start:run_end]))
     return phrases
+
+
+POINTER_LINE_RE = re.compile(
+    r"^\s*(?:\d+\.\s*)?(?:Then s|S)ee \"[^\"\n]+\"(?:(?: and| /) \"[^\"\n]+\")* in `[\w.-]+\.md`[.,]?\s*$"
+)
+BEFORE_STEP_1_LINE_RE = re.compile(r"^\s*Before step 1,", re.IGNORECASE)
+
+
+def scaffolding_stripped(text: str) -> str:
+    """SKILL.md body minus headings, the "Before step 1" line and pointer-only
+    lines — what's left is the skill's own rules, which no other skill repeats."""
+    kept = [
+        line
+        for line in body_without_frontmatter(text).splitlines()
+        if not line.lstrip().startswith("#")
+        and not BEFORE_STEP_1_LINE_RE.match(line)
+        and not POINTER_LINE_RE.match(line)
+    ]
+    return "\n".join(kept)
+
+
+def cross_skill_duplication_errors(skill_dirs: list[Path]) -> list[str]:
+    """Returns every 8+ word run two different SKILL.md files both state."""
+    bodies = {}
+    for skill_dir in skill_dirs:
+        skill_md = skill_dir / "SKILL.md"
+        if skill_md.exists():
+            bodies[skill_dir.name] = scaffolding_stripped(skill_md.read_text())
+    errors = []
+    names = sorted(bodies)
+    for i, first in enumerate(names):
+        for second in names[i + 1:]:
+            for phrase in find_repeated_phrases(bodies[first], bodies[second]):
+                errors.append(
+                    f"{first} and {second}: both SKILL.md say '{phrase}' — "
+                    "move the shared text to shared/ and point at it from each skill"
+                )
+    return errors
 
 
 def headings(text: str) -> set[str]:
@@ -249,10 +291,10 @@ def lint_skill(skill_dir: Path) -> list[str]:
             errors.append(f"{skill_dir.name}: SKILL.md invokes '{SKILL_DIR_VAR}/scripts/{filename}' but the skill has no scripts/{filename} — declare it under metadata.shared-scripts")
 
     skill_body = body_without_frontmatter(text)
-    for filename in parse_metadata_list(frontmatter, "shared"):
-        copy = skill_dir / filename
-        if not copy.exists():
+    for copy in sorted(skill_dir.glob("*.md")):
+        if copy.name == "SKILL.md":
             continue
+        filename = copy.name
         for phrase in find_repeated_phrases(skill_body, copy.read_text()):
             errors.append(f"{skill_dir.name}: SKILL.md and {filename} both say '{phrase}' — keep the rule in one file")
 
@@ -283,6 +325,7 @@ def main() -> int:
     skill_dirs = sorted(p for p in SKILLS_DIR.iterdir() if p.is_dir())
     for skill_dir in skill_dirs:
         all_errors.extend(lint_skill(skill_dir))
+    all_errors.extend(cross_skill_duplication_errors(skill_dirs))
 
     readme = ROOT / "README.md"
     if readme.exists():
