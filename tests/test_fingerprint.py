@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
-from fingerprint import compute_fingerprint  # noqa: E402
+from fingerprint import compute_fingerprint, compute_artifacts_fingerprint  # noqa: E402
 
 
 def run(cmd: list[str], cwd: Path) -> None:
@@ -56,6 +56,59 @@ class FingerprintTests(unittest.TestCase):
         before = compute_fingerprint(self.root)
         (self.root / "HANDOFF.md").write_text("next step\n")
         after = compute_fingerprint(self.root)
+        self.assertEqual(before, after)
+
+    def test_review_md_excluded(self) -> None:
+        before = compute_fingerprint(self.root)
+        (self.root / "REVIEW.md").write_text("Verdict: READY\n")
+        after = compute_fingerprint(self.root)
+        self.assertEqual(before, after)
+
+    def test_teamlead_md_excluded(self) -> None:
+        before = compute_fingerprint(self.root)
+        (self.root / "TEAMLEAD.md").write_text("feedback\n")
+        after = compute_fingerprint(self.root)
+        self.assertEqual(before, after)
+
+
+class ArtifactsFingerprintTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.change_dir = Path(self._tmp.name) / "my-change"
+        (self.change_dir / "specs" / "some-capability").mkdir(parents=True)
+        (self.change_dir / "proposal.md").write_text("# Proposal\n")
+        (self.change_dir / "design.md").write_text("# Design\n")
+        (self.change_dir / "tasks.md").write_text(
+            "- [ ] 1.1 Do the thing\n- [ ] 1.2 Do another thing\n"
+        )
+        (self.change_dir / "specs" / "some-capability" / "spec.md").write_text(
+            "#### Scenario: Something\n- **WHEN** x\n- **THEN** y\n"
+        )
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def test_marking_tasks_does_not_change_artifacts_fingerprint(self) -> None:
+        before = compute_artifacts_fingerprint(self.change_dir)
+        (self.change_dir / "tasks.md").write_text(
+            "- [x] 1.1 Do the thing\n- [X] 1.2 Do another thing\n"
+        )
+        after = compute_artifacts_fingerprint(self.change_dir)
+        self.assertEqual(before, after)
+
+    def test_editing_delta_spec_changes_artifacts_fingerprint(self) -> None:
+        before = compute_artifacts_fingerprint(self.change_dir)
+        (self.change_dir / "specs" / "some-capability" / "spec.md").write_text(
+            "#### Scenario: Something else\n- **WHEN** x\n- **THEN** z\n"
+        )
+        after = compute_artifacts_fingerprint(self.change_dir)
+        self.assertNotEqual(before, after)
+
+    def test_review_and_teamlead_files_excluded_from_artifacts_fingerprint(self) -> None:
+        before = compute_artifacts_fingerprint(self.change_dir)
+        (self.change_dir / "REVIEW.md").write_text("Verdict: READY\n")
+        (self.change_dir / "TEAMLEAD.md").write_text("feedback\n")
+        after = compute_artifacts_fingerprint(self.change_dir)
         self.assertEqual(before, after)
 
 
