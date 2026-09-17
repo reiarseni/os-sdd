@@ -25,13 +25,18 @@ Pick the target with the first rule that applies, in this order:
 3. The only active change in `openspec list --json`.
 4. The exploration file under `openspec/explorations/` this session worked
    in.
-5. Otherwise (several active changes and no context, or no change and no
-   exploration): ask the user to pick with AskUserQuestion before writing
+5. The map under `openspec/maps/` this session worked in, if no exploration
+   applies either.
+6. Otherwise (several active changes and no context, or nothing else
+   applies): ask the user to pick with AskUserQuestion before writing
    anything.
 
 A change goes to `openspec/changes/<name>/HANDOFF.md`. An exploration gets
 its `Next step` section updated instead — never create `HANDOFF.md` for it.
-Having no active change is not a reason to stop.
+A map gets its `## Notes` section updated the same way — append what the
+next session needs (the frontier decision in progress, anything learned
+about a blocked one), never create `HANDOFF.md` for it either. Having no
+active change is not a reason to stop.
 
 ## 2. Focus
 
@@ -56,7 +61,8 @@ secrets and personal data (API keys, tokens, real emails/names from logs):
 describe them ("the .env value that was wrong") instead of pasting them.
 
 For an exploration, write the same content into its `Next step` section
-only; leave its other sections untouched.
+only; leave its other sections untouched. For a map, write it into `## Notes`
+as a dated entry; leave its other sections untouched.
 
 ## 4. Close
 
