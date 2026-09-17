@@ -7,7 +7,6 @@ metadata:
   shared:
     - select-change.md
     - implementation-mode.md
-    - apply-common.md
     - proposal-templates.md
     - next-step.md
   shared-scripts:

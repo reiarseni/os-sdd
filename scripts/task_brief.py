@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Print the brief for one task: its text, the full scenarios its `covers:`
 points to, and — in tdd changes — the seam for each scenario. Used by
-os-apply* so a task can be worked on without re-reading every artifact.
+os-apply so a task can be worked on without re-reading every artifact.
 
 Usage: task_brief.py <change> <id>
 

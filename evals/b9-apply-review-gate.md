@@ -1,4 +1,4 @@
-# B9 — `os-apply*`: REVIEW.md freshness gate
+# B9 — `os-apply`: REVIEW.md freshness gate
 
 Covers: applying without any `REVIEW.md` warns and asks before continuing;
 a `REVIEW.md` whose `Fingerprint:` no longer matches the artifacts (stale

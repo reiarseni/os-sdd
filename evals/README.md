@@ -31,7 +31,7 @@ post-answer behavior as not yet covered for exactly this reason).
 | `b6-review-adjustments.md` | `os-review`'s findings, all-tasks-done refusal |
 | `b7-review-teamlead.md` | `os-review`'s `TEAMLEAD.md` round trip |
 | `b8-explore-options.md` | `os-explore`'s initial web/method/prototype question |
-| `b9-apply-review-gate.md` | `os-apply*` warning without a fresh `REVIEW.md` |
+| `b9-apply-review-gate.md` | `os-apply` warning without a fresh `REVIEW.md` |
 | `b10-verify-package.md` | `os-verify`'s evidence package and fidelity subagent |
 | `b11-handoff-wayfind.md` | `os-handoff`/`os-wayfind` with maps and stretches |
 | `c1-apply-mode-loading.md` | `os-apply` loads only its mode's file, asks when the mode is missing |
