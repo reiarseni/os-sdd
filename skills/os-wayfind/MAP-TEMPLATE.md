@@ -29,6 +29,17 @@ Blocked by: <other open decision, or none>
 
 <what needs resolving here>
 
+## Stretches
+
+<!-- A stretch is a coherent slice of the destination whose decisions are
+     all resolved. `Change:` is filled in once `/os-propose` links back
+     with a `Map:` line in that change's proposal.md. -->
+
+### <stretch>
+
+Decisions: <one-line summaries or refs to "Decisions so far" entries>
+Change: <none yet | openspec/changes/<name>>
+
 ## Not yet specified
 
 - <thing acknowledged but not decided or scheduled>

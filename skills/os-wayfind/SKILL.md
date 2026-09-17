@@ -44,12 +44,18 @@ unblocked.
 ## 4. Stretch ready?
 
 A "stretch" is a coherent slice of the destination whose decisions are all
-resolved. When one has no open decisions left, don't implement it —
-recommend `/os-propose <map>#<stretch>`. Once the user creates the change,
-link `openspec/changes/<change>` from that stretch in the map.
+resolved. When one has no open decisions left, add it to `## Stretches`
+(`Decisions:` listing what it covers, `Change: none yet`) — don't implement
+it. Recommend `/os-propose openspec/maps/<name>.md#<stretch>`.
+
+Before doing anything else, check every existing stretch's `Change:` field:
+if it still says `none yet`, search active changes' `proposal.md` for a
+`Map: openspec/maps/<name>.md#<stretch>` line matching it, and fill in
+`Change: openspec/changes/<change>` if found.
 
 ## 5. Close
 
 End with either:
 - `Next: /os-wayfind <name>` if there's still frontier to resolve, or
-- `Next: /os-propose <map>#<stretch>` if a stretch just became ready.
+- `Next: /os-propose openspec/maps/<name>.md#<stretch>` if a stretch just
+  became ready.
