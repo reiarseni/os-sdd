@@ -1,7 +1,21 @@
 # Apply: common steps
 
-Contract shared by `os-apply` and `os-apply-tdd`. Each skill defines its
-own evidence for a task.
+Contract for `os-apply`. Each mode file defines its own evidence for a
+task.
+
+## Review gate
+
+Before reading the artifacts, check `openspec/changes/<name>/REVIEW.md`:
+
+- Missing entirely, or `Verdict: BLOCK`: warn the user and recommend
+  `/os-review <name>`. Continue only if the user explicitly confirms
+  applying without a fresh `READY`.
+- `Verdict: READY`: compare its `Fingerprint:` line against the change's
+  current artifacts fingerprint (each skill's step 1 says how to compute
+  it). A mismatch means the artifacts changed since the review — treat it
+  the same as missing/`BLOCK` (warn, recommend `/os-review <name>`, confirm
+  before continuing). A match means the review is fresh: proceed without
+  asking.
 
 ## Read once
 
@@ -12,7 +26,8 @@ and resume from the step it names instead of starting over.
 
 If context gets compacted or cleared mid-change, don't re-read those
 artifacts: resume from `tasks.md` (the first unchecked task),
-`HANDOFF.md` if present, and that task's brief.
+`HANDOFF.md` if present, that task's brief, and `modes/<mode>.md` — the
+red→green rules in `tdd` mode don't survive compaction otherwise.
 
 ## Lightweight review
 

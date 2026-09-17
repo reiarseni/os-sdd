@@ -1,7 +1,17 @@
-# Red → green, one scenario at a time
+# TDD mode
 
-Mechanics for a single vertical slice in `os-apply-tdd`. Adapted from Matt
-Pocock's `tdd`/`implement` and Superpowers' `test-driven-development`.
+Vertical slices — one scenario at a time, red for the right reason, then the
+minimum code to go green — in the seams `design.md` declares. Adapted from
+Matt Pocock's `tdd`/`implement` and Superpowers' `test-driven-development`.
+
+## Implement and evidence
+
+For each scenario in the task's brief, follow "One scenario, one slice"
+below, or "Manual scenarios" below if its seam is `manual:`. If the brief
+says the seam is not declared, see "Undeclared seams" below.
+
+**Evidence**: the red→green transcript (or the manual verification's
+result) for every scenario of the task.
 
 ## One scenario, one slice
 
@@ -35,4 +45,4 @@ that scenario's evidence.
 
 If a scenario needs an interface that isn't in `## Seams`, stop before
 writing the test: don't invent a seam. End with
-`Next: /os-amend-spec <name>` so the seam gets declared in `design.md`.
+`Next: /os-review <name>` so the seam gets declared in `design.md`.

@@ -1,6 +1,8 @@
 # Proposal templates
 
-Formats shared by the skills that write or amend a change's artifacts.
+Formats shared by the skills that write or amend a change's artifacts. The
+TDD/standard question and its `## Implementation` line are asked and written
+per `session-options.md`, not here.
 
 ## Starting from an exploration
 
@@ -13,30 +15,19 @@ you write `proposal.md`, link the exploration:
 Exploration: openspec/explorations/<file>.md
 ```
 
-## Implementation mode question
+## Starting from a map stretch
 
-Always ask, with AskUserQuestion, whether the change will be built with TDD
-or standard, recommending based on what you've seen (existing test coverage,
-whether the change touches a pure-logic seam vs. glue code):
-
-- standard (recommended when there's no obvious seam or the change is
-  mostly glue/config)
-- tdd (recommended when the change adds testable logic behind a seam)
-
-Write the literal line in `proposal.md`, in its own `## Implementation`
-section:
+If invoked with `openspec/maps/<name>.md#<stretch>`, read the map's
+`## Stretches` section and treat that stretch's decisions the same way an
+exploration's "Leaning decisions" are treated. When you write `proposal.md`,
+link the stretch:
 
 ```
-## Implementation
+Map: openspec/maps/<name>.md#<stretch>
+```
 
-Implementation: tdd
-```
-or
-```
-## Implementation
-
-Implementation: standard
-```
+`os-wayfind` fills in that stretch's `Change:` line by searching for this
+`Map:` line across changes, so write it exactly once, verbatim.
 
 ## Seams (tdd only)
 
@@ -74,3 +65,12 @@ checkbox literally):
 Use `— covers: none (<reason>)` only for infrastructure/docs tasks that
 don't map to a scenario. Every scenario in the delta specs must be covered
 by at least one task.
+
+## How a task is verified
+
+Every task states, in its own text, the command or check that verifies it —
+`openspec` tracks this per OpenSpec ≥ 1.10. In `standard` mode this can be
+any check (a command, a manual step); in `tdd` mode it's the seam's test
+command, and `tasks.md` is organized in vertical slices: each task covers
+one seam's scenarios and starts from a red test before the implementation,
+not a task per file or per layer.

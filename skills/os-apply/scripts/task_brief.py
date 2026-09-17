@@ -129,7 +129,7 @@ def build_brief(project_root: Path, change: str, task: int | str) -> str:
         parts.append(block if block else "(scenario text not found — check tasks.md covers: suffix)")
         if mode == "tdd":
             seam = find_seam(change_dir / "design.md", scenario)
-            parts.append(f"Seam: {seam if seam else '(not declared — stop and recommend /os-amend-spec)'}")
+            parts.append(f"Seam: {seam if seam else '(not declared — stop and recommend /os-review)'}")
         parts.append("")
     return "\n".join(parts).strip()
 
