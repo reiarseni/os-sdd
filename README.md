@@ -1,6 +1,6 @@
 # os-sdd
 
-A family of 10 `os-*` skills that drives the [OpenSpec](https://github.com/)
+A family of 8 `os-*` skills that drives the [OpenSpec](https://github.com/)
 CLI (`spec-driven` schema) **without modifying it**. Skills never invoke each
 other: each one ends with a `Next: /os-<skill> <arg>` line, and the user
 decides whether to follow it.
@@ -9,42 +9,46 @@ decides whether to follow it.
 
 ```
 os-explore ──┬─→ os-propose ───────┐
-             └─→ os-propose-drill ─┤
+             └─→ os-propose-grill ─┤
                                     ↓
-                            os-review-spec
+                              os-review
                                     ↓
-                       os-apply / os-apply-tdd
+                                os-apply
                                     ↓
                               os-verify ──→ (archive)
 
-     os-amend-spec: changes the course of an existing change, in any phase
-     os-handoff:    multi-session handoff, within any phase
-     os-wayfind:    decision map for work that doesn't fit in one session
-                     → resolved legs become changes via os-propose
+     os-review:   also runs mid-implementation, to change course without
+                   fragmenting the cycle into a separate skill
+     os-handoff:  multi-session handoff, within any phase
+     os-wayfind:  decision map for work that doesn't fit in one session
+                  → resolved stretches become changes via os-propose
 ```
 
-## The 10 skills
+`os-propose`, `os-propose-grill`, `os-review` and `os-explore` all open by
+asking whether to research the web first, and `os-propose*` asks whether to
+plan with TDD only at the end of the interview — see `shared/session-options.md`.
+
+## The 8 skills
 
 | Skill | When | Produces |
 |---|---|---|
 | `os-explore` | Vague idea or request with no shape yet (only via `/os-explore`) | Exploration file; never code or changes |
-| `os-propose` | Scoped request, known shape | `proposal.md`, `design.md`, delta specs, `tasks.md` — topic-based interview |
-| `os-propose-drill` | Ambiguous request, cascading decisions | Same as `os-propose` — interview driven by the decision tree's frontier |
-| `os-review-spec` | Artifacts ready, before implementing | Findings report by severity, offer to fix |
-| `os-amend-spec` | Change of course mid-implementation | Updated artifacts, completed tasks preserved |
-| `os-apply` | `standard` change with pending tasks | Code + checked tasks, with evidence per task |
-| `os-apply-tdd` | `tdd` change with pending tasks | Same, via red→green cycles on the declared seams |
+| `os-propose` | Scoped request, known shape | `proposal.md`, `design.md`, delta specs, `tasks.md` — deep-style topic interview, ≤10 rounds |
+| `os-propose-grill` | Ambiguous request, cascading decisions | Same as `os-propose` — interview driven by the decision tree's frontier, no round cap |
+| `os-review` | Artifacts ready, before implementing or mid-implementation | Findings as concrete proposals, `REVIEW.md` (`READY`/`BLOCK`), optional `TEAMLEAD.md` round trip |
+| `os-apply` | Change with pending tasks | Code + checked tasks, with evidence per task — standard, or tdd's red→green cycles on the declared seams, per `proposal.md`'s mode |
 | `os-verify` | All tasks done | `VERIFY.md` (`PASS`/`BLOCK`); offers to archive on `PASS` |
-| `os-handoff` | End of session, handoff needed | `HANDOFF.md` rewritten in full (or the exploration's `Next step`) |
-| `os-wayfind` | Work that doesn't fit in one session | Map in `openspec/maps/<name>.md`; ready legs → `os-propose` |
+| `os-handoff` | End of session, handoff needed | `HANDOFF.md` rewritten in full (or the exploration's/map's own section) |
+| `os-wayfind` | Work that doesn't fit in one session | Map in `openspec/maps/<name>.md`; ready stretches → `os-propose` |
 
 ## Artifact conventions
 
 They remain valid OpenSpec — the CLI ignores them, the family reads them.
 
 - **`## Implementation`** in `proposal.md`, with the literal line
-  `Implementation: tdd` or `Implementation: standard`. `os-apply*` reads it
-  with a literal grep; if missing, it assumes `standard` and warns.
+  `Implementation: tdd` or `Implementation: standard`. `os-apply` reads it
+  with a literal grep and loads only `modes/<mode>.md`; if missing, it asks
+  which mode the change is.
 - **`## Seams`** in `design.md`, only for `tdd`: a `seam → scenarios` table.
   A scenario that can't be automated is written as `manual: <check>` with its
   reason.
@@ -56,11 +60,20 @@ They remain valid OpenSpec — the CLI ignores them, the family reads them.
 
 - `openspec/changes/<name>/VERIFY.md` — `os-verify` verdict with a content fingerprint
   (`scripts/fingerprint.py`); archived together with the change.
+- `openspec/changes/<name>/REVIEW.md` — `os-review` verdict (`READY`/`BLOCK`)
+  with an artifacts-only fingerprint (`scripts/fingerprint.py --artifacts`);
+  `os-apply*` and the hook only accept a fresh `READY`.
+- `openspec/changes/<name>/TEAMLEAD.md` — human-language summary and
+  implications for a team lead, with a `## Team-lead feedback` section
+  `os-review` reads back in; outside both fingerprints.
 - `openspec/changes/<name>/HANDOFF.md` — multi-session handoff; `os-verify` deletes it
   before archiving.
 - `openspec/explorations/<YYYY-MM-DD>-<topic>.md` — bridge from `os-explore`
   to `os-propose*`; never moved or deleted.
 - `openspec/maps/<name>.md` — `os-wayfind` maps.
+- `prototype/<name>` (branch, in a git project) — a confirmed prototype from
+  `os-explore`; never merged, never deleted. Outside a git project it's a
+  temporary directory outside the project instead.
 - `openspec/os.yaml` — optional project configuration.
 
 > **Gitignore build artifacts** (`__pycache__/`, `*.pyc`, `dist/`,
@@ -124,7 +137,9 @@ The `os-sdd` source directories are never touched by installation.
 
 `select-change.md`, `implementation-mode.md`, `next-step.md`,
 `interview.md`, `proposal-templates.md`, `apply-common.md`,
-`proposal-flow.md`: a contract shared by several skills.
+`proposal-flow.md`, `session-options.md`: a contract shared by several
+skills. `session-options.md` is the web-research and TDD questions, shared
+by `os-propose`, `os-propose-grill`, `os-review` and `os-explore`.
 `scripts/sync-shared.py` copies each file into the skills that declare it
 under `metadata:` in their frontmatter:
 
@@ -166,36 +181,69 @@ read as the task's position.
 ## Behavior evals (`evals/`)
 
 Manual cases for failures that live in how the model reads a skill rather
-than in code: `os-apply` passing the task id, `os-handoff` with no active
-change, and `os-explore` not triggering on a plain question. Each case has
-setup, the exact prompt, an observable pass criterion and its last result;
-run them by hand in a clean session (see `evals/README.md`). They are not
-part of `unittest`.
+than in code. Each case has setup, the exact prompt, an observable pass
+criterion and its last result; run them by hand in a clean session (see
+`evals/README.md`). They are not part of `unittest`.
+
+- `a1`-`a3`: `os-apply` passing the task id, `os-handoff` with no active
+  change, `os-explore` not triggering on a plain question.
+- `b1`-`b11`: the session-options contract, both propose interviews, source
+  detection, generated-artifact quality, `os-review`'s findings/adjustments/
+  team-lead round trip, `os-explore`'s initial options, the apply review
+  gate, the verify evidence package, and handoff/wayfind with maps.
+
+**Known constraint**: `AskUserQuestion` is not available in headless
+`claude -p` sessions (confirmed while running `b1`-`b8`) — every skill falls
+back to plain text and reports the tool as unavailable. A `b*` eval can
+verify a question's content, order and reasoning this way, but not that the
+literal tool call fires, and a single non-interactive `-p` turn always ends
+at the first such question — verifying what happens after the user answers
+needs a scripted multi-turn `-c -p` conversation.
 
 ## Archive order
 
 `clarify-os-skill-instructions` modifies requirements that
 `add-os-skill-family` adds, so archive `add-os-skill-family` first.
+`reshape-os-cycle` renames/retires skills that both of those reference by
+name; archive it after them. `merge-os-apply-modes` builds on the `os-review`
+capability `reshape-os-cycle` adds, so archive it after `reshape-os-cycle`.
+
+## Migration
+
+`reshape-os-cycle` renamed and retired three skills. A project with an
+active change or a habit built around the old names should switch to the
+new ones — nothing migrates their in-flight changes automatically.
+
+| Old name | New name | Notes |
+|---|---|---|
+| `os-propose-drill` | `os-propose-grill` | Same role; the interview is now Pocock-style grilling with no round cap. |
+| `os-review-spec` | `os-review` | Same role; now also runs mid-implementation, proposes concrete fixes, and always writes `REVIEW.md`. |
+| `os-amend-spec` | *(retired)* | Its role — changing course with tasks already done — is now `os-review`'s mid-implementation path. |
+| `os-apply-tdd` | `os-apply` | Same role; `os-apply` now reads `Implementation:` from `proposal.md` and picks the mode itself. |
 
 ## Acknowledgements
 
 | Idea | Source | Where it lands |
 |---|---|---|
 | `proposal → design, specs → tasks` cycle, `status/instructions/validate/archive` CLI | OpenSpec | All skills |
-| Thinking partner, no implementation without approval | Superpowers (`brainstorming`) | `os-explore` |
-| Throwaway prototype for viability doubts | Superpowers (`prototype`, via Pocock) | `os-explore` — spikes |
+| `context`/`instructions --json`/`requires` graph/`status --all`/`show --diff`/`root` check | OpenSpec ≥ 1.11-1.13 | `shared/proposal-flow.md`, `hooks/os_state.py`, `os-review` |
+| Thinking partner, no implementation without approval | Superpowers (`brainstorming`) | `os-explore` — one method option |
+| Throwaway spike for viability doubts, deleted once answered | Superpowers (`prototype`) | `os-explore` — spikes |
 | Verification before claiming completion, real evidence | Superpowers (`verification-before-completion`) | `os-verify` |
-| Per-task brief, delegation with progress log | Superpowers (`subagent-driven-development`) | `scripts/task_brief.py`, `os-apply*` |
-| Per-file red→green cycle | Superpowers (`test-driven-development`) | `os-apply-tdd` |
+| Per-task brief, delegation with progress log | Superpowers (`subagent-driven-development`) | `scripts/task_brief.py`, `os-apply` |
+| Per-file red→green cycle | Superpowers (`test-driven-development`) | `os-apply` — `tdd` mode |
 | `SessionStart` hook | Superpowers | `hooks/session-start.py` |
-| Questioning along the decision tree's frontier | Matt Pocock (`grilling`) | `os-propose-drill` |
-| Seam-based TDD, `/implement` + `/tdd` | Matt Pocock | `os-apply-tdd` |
+| Questioning along the decision tree's frontier, ❓/➡️ format | Matt Pocock (`grilling`) | `os-propose-grill`, `os-explore` — one method option |
+| Confirmed prototype on a branch, kept rather than deleted | Matt Pocock (`prototype`) | `os-explore` — prototypes |
+| Seam-based TDD, `/implement` + `/tdd` | Matt Pocock | `os-apply` — `tdd` mode |
 | Multi-session handoff | Matt Pocock (`handoff`) | `os-handoff` |
-| Local decision map | Matt Pocock (`wayfinder`) | `os-wayfind` |
+| Local decision map, stretches | Matt Pocock (`wayfinder`) | `os-wayfind` |
+| Light-touch ambiguity resolution, minor assumptions recorded rather than asked | `openspec-explore` (upstream) | `os-explore` — one method option |
+| Fixed-purpose rounds with a pre-summary before writing | `openspec-propose-deep` | `os-propose` |
 
 ## Requirements
 
-`openspec` CLI ≥ 1.3, Python 3 (stdlib only, no external dependencies),
+`openspec` CLI ≥ 1.13, Python 3 (stdlib only, no external dependencies),
 `git`, `bash` (for `install.sh`).
 
 ## Tests
