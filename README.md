@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A family of 8 `os-*` skills that drives the [OpenSpec](https://github.com/)
+A family of 8 `os-*` skills that drives the [OpenSpec](https://github.com/Fission-AI/OpenSpec)
 CLI (`spec-driven` schema) **without modifying it**. Skills never invoke each
 other: each one ends with a `Next: /os-<skill> <arg>` line, and the user
 decides whether to follow it.
@@ -64,7 +64,7 @@ They remain valid OpenSpec — the CLI ignores them, the family reads them.
   (`scripts/fingerprint.py`); archived together with the change.
 - `openspec/changes/<name>/REVIEW.md` — `os-review` verdict (`READY`/`BLOCK`)
   with an artifacts-only fingerprint (`scripts/fingerprint.py --artifacts`);
-  `os-apply*` and the hook only accept a fresh `READY`.
+  `os-apply` and the hook only accept a fresh `READY`.
 - `openspec/changes/<name>/TEAMLEAD.md` — human-language summary and
   implications for a team lead, with a `## Team-lead feedback` section
   `os-review` reads back in; outside both fingerprints.
@@ -138,10 +138,13 @@ The `os-sdd` source directories are never touched by installation.
 ## Shared content (`shared/`)
 
 `select-change.md`, `implementation-mode.md`, `next-step.md`,
-`interview.md`, `proposal-templates.md`, `apply-common.md`,
-`proposal-flow.md`, `session-options.md`: a contract shared by several
-skills. `session-options.md` is the web-research and TDD questions, shared
-by `os-propose`, `os-propose-grill`, `os-review` and `os-explore`.
+`interview.md`, `proposal-templates.md`, `proposal-flow.md`,
+`session-options.md`: a contract shared by **two or more** skills — a file
+with a single consumer lives in that skill's own directory instead.
+`session-options.md` is the web-research and TDD questions, shared by
+`os-propose`, `os-propose-grill`, `os-review` and `os-explore`;
+`proposal-flow.md` is everything `os-propose` and `os-propose-grill` do
+around their interviews, so each `SKILL.md` holds only its own interview.
 `scripts/sync-shared.py` copies each file into the skills that declare it
 under `metadata:` in their frontmatter:
 
@@ -169,8 +172,13 @@ files, since Claude Code only substitutes that variable in `SKILL.md`.
 Each rule lives in one file. The linter also fails when:
 
 - a normalized run of 8 or more words appears both in a `SKILL.md` and in
-  one of its shared files (lowercased, markdown stripped) — remove the
+  one of its supporting `.md` files (lowercased, markdown stripped),
+  whether or not that file is declared under `metadata.shared` — remove the
   duplicate, there are no exceptions;
+- the same run appears in two different `SKILL.md` files — move it to
+  `shared/` and point at it from each skill. Headings, the "Before step 1"
+  line and lines that only point at a section (`See "X" in \`y.md\`.`) are
+  exempt: they're scaffolding, not rules;
 - a reference points at a missing section (`"<Section>" in <file>.md`,
   `see <file>.md ("<Section>")`, `"<Section>" below`), or says
   "below"/"above" without naming a section.
@@ -202,26 +210,6 @@ literal tool call fires, and a single non-interactive `-p` turn always ends
 at the first such question — verifying what happens after the user answers
 needs a scripted multi-turn `-c -p` conversation.
 
-## Archive order
-
-`clarify-os-skill-instructions` modifies requirements that
-`add-os-skill-family` adds, so archive `add-os-skill-family` first.
-`reshape-os-cycle` renames/retires skills that both of those reference by
-name; archive it after them. `merge-os-apply-modes` builds on the `os-review`
-capability `reshape-os-cycle` adds, so archive it after `reshape-os-cycle`.
-
-## Migration
-
-`reshape-os-cycle` renamed and retired three skills. A project with an
-active change or a habit built around the old names should switch to the
-new ones — nothing migrates their in-flight changes automatically.
-
-| Old name | New name | Notes |
-|---|---|---|
-| `os-propose-drill` | `os-propose-grill` | Same role; the interview is now Pocock-style grilling with no round cap. |
-| `os-review-spec` | `os-review` | Same role; now also runs mid-implementation, proposes concrete fixes, and always writes `REVIEW.md`. |
-| `os-amend-spec` | *(retired)* | Its role — changing course with tasks already done — is now `os-review`'s mid-implementation path. |
-| `os-apply-tdd` | `os-apply` | Same role; `os-apply` now reads `Implementation:` from `proposal.md` and picks the mode itself. |
 
 ## Acknowledgements
 
