@@ -1,13 +1,14 @@
 # Interview contract
 
-Shared by `os-propose` and `os-propose-drill`. Each skill defines how it
+Shared by `os-propose` and `os-propose-grill`. Each skill defines how it
 chooses what to ask (thematic rounds vs. decision-tree frontier); this file
-defines what both must cover and how.
+defines what both must cover and how. The TDD/standard question lives in
+`session-options.md`, asked at the end, not as a checklist point here.
 
 ## Goal
 
 Cover everything needed to write a proposal, design, specs and tasks that
-`os-review-spec` won't bounce back. Not "ask a few questions" — cover the
+`os-review` won't bounce back. Not "ask a few questions" — cover the
 checklist.
 
 ## Coverage checklist
@@ -21,14 +22,19 @@ Every checklist point must end resolved or marked `n/a: <reason>`:
 5. Permissions and security
 6. Data, migration and compatibility
 7. Interaction with existing functionality
-8. Implementation mode (tdd/standard) and seams
 
 ## Stopping
 
-Stop as soon as the checklist is fully resolved (or `n/a`'d). Otherwise stop
-at a **fixed limit of 10 rounds**: on round 10, stop regardless of what's
-left, present the pre-summary, and move whatever's unresolved into
-`design.md`'s Open Questions. Never extend past round 10.
+Never present the pre-summary with an unconfirmed assumption still in it —
+either resolve it with a question or mark it `n/a: <reason>`.
+
+- `os-propose`: stop as soon as the checklist is fully resolved (or `n/a`'d).
+  Otherwise stop at a **fixed limit of 10 rounds**: on round 10, stop
+  regardless of what's left, present the pre-summary, and move whatever's
+  unresolved into `design.md`'s Open Questions. Never extend past round 10.
+- `os-propose-grill`: no round limit. Stop only when the decision tree's
+  frontier is empty — every question it opened has an answer or is marked
+  `n/a: <reason>`.
 
 ## Tool
 
