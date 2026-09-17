@@ -13,14 +13,14 @@ sys.path.insert(0, str(ROOT / "tests"))
 import lint_skills  # noqa: E402
 
 
-def make_skill(root: Path, body: str, frontmatter_extra: str = "", files: dict[str, str] | None = None) -> Path:
-    skill_dir = root / "skills" / "os-demo"
+def make_skill(root: Path, body: str, frontmatter_extra: str = "", files: dict[str, str] | None = None, name: str = "os-demo") -> Path:
+    skill_dir = root / "skills" / name
     skill_dir.mkdir(parents=True)
     (skill_dir / "SKILL.md").write_text(
-        f"---\nname: os-demo\ndescription: Use when testing.\n{frontmatter_extra}---\n\n{body}\n"
+        f"---\nname: {name}\ndescription: Use when testing.\n{frontmatter_extra}---\n\n{body}\n"
     )
-    for name, content in (files or {}).items():
-        path = skill_dir / name
+    for filename, content in (files or {}).items():
+        path = skill_dir / filename
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
     return skill_dir
@@ -34,6 +34,7 @@ class LintSkillsTest(unittest.TestCase):
             (root / "scripts" / "tool.py").write_text("print('ok')\n")
             (root / "shared").mkdir()
             (root / "shared" / "contract.md").write_text(shared_source)
+            (root / "shared" / "session-options.md").write_text("# Session options\n")
             skill_dir = make_skill(root, **kwargs)
             with unittest.mock.patch.object(lint_skills, "SCRIPTS_DIR", root / "scripts"), \
                     unittest.mock.patch.object(lint_skills, "SHARED_DIR", root / "shared"):
@@ -102,7 +103,7 @@ class LintSkillsTest(unittest.TestCase):
                 self.assertTrue(any("borrows steps from another skill" in e and "move the shared text to shared/" in e for e in errors), errors)
 
     def test_recommending_another_skill_passes(self):
-        errors = self.lint(body="Use `/os-propose-drill` instead when decisions cascade. End with `Next: /os-verify <name>`.")
+        errors = self.lint(body="Use `/os-propose-grill` instead when decisions cascade. End with `Next: /os-verify <name>`.")
         self.assertEqual(errors, [])
 
     def test_repeated_phrase_in_skill_and_shared_fails(self):
@@ -153,6 +154,97 @@ class LintSkillsTest(unittest.TestCase):
         self.assertEqual(errors, [])
         errors = self.lint(body='See "Starting from an exploration" below.')
         self.assertTrue(any("no heading 'Starting from an exploration'" in e for e in errors), errors)
+
+    def test_retired_skill_reference_fails(self):
+        errors = self.lint(body="Before step 1, read `contract.md`.\n\nEnd with `Next: /os-review-spec <name>`.")
+        self.assertTrue(
+            any("os-demo" in e and "os-review-spec" in e for e in errors), errors
+        )
+
+    def test_readme_migration_table_with_retired_names_passes(self):
+        readme = (
+            "# os-sdd\n\n"
+            "## Migration\n\n"
+            "| Old | New |\n"
+            "|---|---|\n"
+            "| `os-amend-spec` | removed |\n"
+            "| `os-review-spec` | `os-review` |\n"
+            "| `os-propose-drill` | `os-propose-grill` |\n"
+        )
+        self.assertEqual(lint_skills.readme_retired_errors(readme), [])
+
+    def test_readme_retired_name_outside_migration_fails(self):
+        readme = "# os-sdd\n\nSee `os-amend-spec` for details.\n\n## Migration\n\n(none)\n"
+        errors = lint_skills.readme_retired_errors(readme)
+        self.assertTrue(any("os-amend-spec" in e for e in errors), errors)
+
+    def test_required_skill_without_session_options_fails(self):
+        errors = self.lint(
+            body="Before step 1, read `contract.md`.",
+            frontmatter_extra="metadata:\n  shared:\n    - contract.md\n",
+            files={"contract.md": "# Contract\n"},
+            name="os-review",
+        )
+        self.assertTrue(any("os-review" in e and "session-options.md" in e for e in errors), errors)
+
+    def test_required_skill_with_session_options_passes(self):
+        errors = self.lint(
+            body="Before step 1, read `contract.md` and `session-options.md`.",
+            frontmatter_extra="metadata:\n  shared:\n    - contract.md\n    - session-options.md\n",
+            files={"contract.md": "# Contract\n", "session-options.md": "# Session options\n"},
+            name="os-review",
+        )
+        self.assertEqual(errors, [])
+
+    def test_apply_missing_tdd_mode_file_fails(self):
+        errors = self.lint(
+            body="Before step 1, read `contract.md`.",
+            files={"modes/standard.md": "# Standard\n"},
+            name="os-apply",
+        )
+        self.assertTrue(any("os-apply" in e and "modes/tdd.md" in e for e in errors), errors)
+
+    def test_apply_before_step_1_names_mode_file_fails(self):
+        errors = self.lint(
+            body="Before step 1, read `modes/standard.md`.",
+            files={"modes/standard.md": "# Standard\n", "modes/tdd.md": "# TDD\n"},
+            name="os-apply",
+        )
+        self.assertTrue(
+            any("os-apply" in e and "modes/standard.md" in e and "Before step 1" in e for e in errors), errors
+        )
+
+    def test_next_line_names_retired_apply_tdd_fails(self):
+        errors = self.lint(body="Before step 1, read `contract.md`.\n\nEnd with `Next: /os-apply-tdd <name>`.")
+        self.assertTrue(any("os-apply-tdd" in e for e in errors), errors)
+
+    def test_retired_apply_tdd_directory_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            skills_dir = Path(tmp) / "skills"
+            (skills_dir / "os-apply-tdd").mkdir(parents=True)
+            errors = lint_skills.retired_directory_errors(skills_dir)
+        self.assertTrue(any("os-apply-tdd" in e for e in errors), errors)
+
+    def test_readme_apply_tdd_in_migration_only_passes(self):
+        readme = (
+            "# os-sdd\n\n"
+            "## Migration\n\n"
+            "| Old | New |\n"
+            "|---|---|\n"
+            "| `os-apply-tdd` | `os-apply` |\n"
+        )
+        self.assertEqual(lint_skills.readme_retired_errors(readme), [])
+
+    def test_session_options_declared_but_missing_from_before_step_1_fails(self):
+        errors = self.lint(
+            body="Before step 1, read `contract.md`.",
+            frontmatter_extra="metadata:\n  shared:\n    - contract.md\n    - session-options.md\n",
+            files={"contract.md": "# Contract\n", "session-options.md": "# Session options\n"},
+            name="os-explore",
+        )
+        self.assertTrue(
+            any("os-explore" in e and "Before step 1" in e and "session-options.md" in e for e in errors), errors
+        )
 
 
 if __name__ == "__main__":

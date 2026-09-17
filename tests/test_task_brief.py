@@ -32,12 +32,19 @@ def make_change(root: Path, mode: str) -> Path:
         "- **WHEN** HANDOFF.md exists\n"
         "- **THEN** the skill reads it\n"
     )
+    (change_dir / "specs" / "os-implementation" / "spec.md").write_text(
+        (change_dir / "specs" / "os-implementation" / "spec.md").read_text()
+        + "\n#### Scenario: Undeclared interface\n"
+        "- **WHEN** a scenario needs an interface not in the seams table\n"
+        "- **THEN** the brief says so\n"
+    )
     (change_dir / "tasks.md").write_text(
         "## 1. Section\n\n"
         "- [ ] 1.1 infra task — covers: none (scaffolding)\n"
         "- [ ] 1.2 real task — covers: os-implementation/Resume after compaction\n\n"
         "## 2. Section\n\n"
         "- [ ] 2.1 handoff task — covers: os-implementation/Start with handoff\n"
+        "- [ ] 2.2 undeclared task — covers: os-implementation/Undeclared interface\n"
     )
     return root
 
@@ -90,6 +97,12 @@ class TaskBriefTests(unittest.TestCase):
         brief = build_brief(self.root, "demo", "9.9")
         self.assertTrue(brief.startswith("error:"), brief)
         self.assertIn("1.1, 1.2, 2.1", brief)
+
+    def test_undeclared_seam_recommends_os_review(self) -> None:
+        make_change(self.root, "tdd")
+        brief = build_brief(self.root, "demo", "2.2")
+        self.assertIn("/os-review", brief)
+        self.assertNotIn("/os-amend-spec", brief)
 
     def test_parse_covers_splits_multiple_scenarios(self) -> None:
         text, pairs = parse_covers("do X — covers: cap/One, cap/Two")

@@ -57,6 +57,49 @@ SECTION_HERE_RE = re.compile(r'"([^"\n]+)" (below|above)\b')
 BARE_DIRECTION_RE = re.compile(r"\b(below|above)\b", re.IGNORECASE)
 HEADING_RE = re.compile(r"^#+\s+(?:\d+\.\s+)?(.+?)\s*$", re.MULTILINE)
 
+RETIRED_SKILL_NAMES = ("os-amend-spec", "os-review-spec", "os-propose-drill", "os-apply-tdd")
+RETIRED_NAME_RE = re.compile(r"\b(?:" + "|".join(re.escape(n) for n in RETIRED_SKILL_NAMES) + r")\b")
+REQUIRES_SESSION_OPTIONS = {"os-propose", "os-propose-grill", "os-review", "os-explore"}
+BEFORE_STEP_1_RE = re.compile(r"Before step 1,[^\n]*", re.IGNORECASE)
+MD_FILENAME_RE = re.compile(r"`([\w.-]+\.md)`")
+MODE_FILENAME_RE = re.compile(r"`(modes/[\w.-]+\.md)`")
+REQUIRED_MODE_FILES = {"os-apply": ("modes/standard.md", "modes/tdd.md")}
+
+
+def before_step_1_files(text: str) -> set[str]:
+    match = BEFORE_STEP_1_RE.search(text)
+    if not match:
+        return set()
+    return set(MD_FILENAME_RE.findall(match.group(0)))
+
+
+def before_step_1_mode_refs(text: str) -> set[str]:
+    match = BEFORE_STEP_1_RE.search(text)
+    if not match:
+        return set()
+    return set(MODE_FILENAME_RE.findall(match.group(0)))
+
+
+def retired_directory_errors(skills_dir: Path) -> list[str]:
+    errors = []
+    for name in RETIRED_SKILL_NAMES:
+        if (skills_dir / name).is_dir():
+            errors.append(f"skills/{name}/ still exists — retired skill")
+    return errors
+
+
+def readme_retired_errors(readme_text: str) -> list[str]:
+    migration_span = (-1, -1)
+    migration_match = re.search(r"^## Migration\n(.*?)(\n## |\Z)", readme_text, re.DOTALL | re.MULTILINE)
+    if migration_match:
+        migration_span = migration_match.span(1)
+    errors = []
+    for m in RETIRED_NAME_RE.finditer(readme_text):
+        if migration_span[0] <= m.start() < migration_span[1]:
+            continue
+        errors.append(f"README.md references retired skill '{m.group(0)}' outside '## Migration'")
+    return errors
+
 
 def normalized_words(text: str) -> list[str]:
     """Lowercase words with markdown markup and edge punctuation stripped."""
@@ -161,7 +204,21 @@ def lint_skill(skill_dir: Path) -> list[str]:
         if "/" in target:
             errors.append(f"{skill_dir.name}: reference '{target}' is not one level deep")
 
-    for filename in parse_metadata_list(frontmatter, "shared"):
+    shared_files = parse_metadata_list(frontmatter, "shared")
+    if skill_dir.name in REQUIRES_SESSION_OPTIONS and "session-options.md" not in shared_files:
+        errors.append(f"{skill_dir.name}: must declare session-options.md under metadata.shared")
+    if "session-options.md" in shared_files and "session-options.md" not in before_step_1_files(text):
+        errors.append(f"{skill_dir.name}: declares session-options.md under metadata.shared but doesn't list it in \"Before step 1\"")
+
+    mode_refs = before_step_1_mode_refs(text)
+    if mode_refs:
+        errors.append(f"{skill_dir.name}: \"Before step 1\" names {', '.join(sorted(mode_refs))} — the mode is chosen at runtime, don't preload a specific mode file")
+
+    for filename in REQUIRED_MODE_FILES.get(skill_dir.name, ()):
+        if not (skill_dir / filename).exists():
+            errors.append(f"{skill_dir.name}: missing {filename}")
+
+    for filename in shared_files:
         source = SHARED_DIR / filename
         copy = skill_dir / filename
         if not copy.exists():
@@ -208,6 +265,8 @@ def lint_skill(skill_dir: Path) -> list[str]:
                 errors.append(f"{skill_dir.name}: {md.name} uses {SKILL_DIR_VAR}, which Claude Code only substitutes in SKILL.md")
         for phrase in find_cross_skill_refs(md_text):
             errors.append(f"{skill_dir.name}: {md.name} borrows steps from another skill ('{phrase}') — move the shared text to shared/")
+        for m in RETIRED_NAME_RE.finditer(md_text):
+            errors.append(f"{skill_dir.name}: {md.name} references retired skill '{m.group(0)}'")
         for problem in find_broken_section_refs(md.name, md_text, skill_dir):
             errors.append(f"{skill_dir.name}: {md.name} has a broken section reference: {problem}")
 
@@ -220,9 +279,14 @@ def main() -> int:
         return 0
 
     all_errors: list[str] = []
+    all_errors.extend(retired_directory_errors(SKILLS_DIR))
     skill_dirs = sorted(p for p in SKILLS_DIR.iterdir() if p.is_dir())
     for skill_dir in skill_dirs:
         all_errors.extend(lint_skill(skill_dir))
+
+    readme = ROOT / "README.md"
+    if readme.exists():
+        all_errors.extend(readme_retired_errors(readme.read_text()))
 
     if all_errors:
         for error in all_errors:
