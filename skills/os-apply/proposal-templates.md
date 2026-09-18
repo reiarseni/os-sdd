@@ -17,10 +17,22 @@ Exploration: openspec/explorations/<file>.md
 
 ## Starting from a map stretch
 
-If invoked with `openspec/maps/<name>.md#<stretch>`, read the map's
-`## Stretches` section and treat that stretch's decisions the same way an
-exploration's "Leaning decisions" are treated. When you write `proposal.md`,
-link the stretch:
+If invoked with `openspec/maps/<name>.md#<stretch>`, read that stretch's
+`Decisions:` line in `## Stretches`. Each quoted title names a
+`### <decision>` block under `## Decisions so far`; read those blocks.
+
+- If `Decisions:` has no quoted titles, or a quoted title matches no block,
+  ask the user which blocks belong to the stretch before round 1 — don't
+  deduce it.
+- The stretch's decisions are already resolved: never ask them again. They
+  count as resolved decisions within checklist point 3, which stays open
+  for any decision the stretch doesn't cover.
+- Copy each one into `design.md`'s Decisions, with the alternatives its
+  block records.
+- Reopen one only if the code or the specs contradict it: ask the user
+  about that decision, citing the file that contradicts it.
+
+When you write `proposal.md`, link the stretch:
 
 ```
 Map: openspec/maps/<name>.md#<stretch>
