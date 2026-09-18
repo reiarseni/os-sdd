@@ -1,7 +1,8 @@
 # Session options
 
-Contract shared by `os-propose`, `os-propose-grill`, `os-review` and
-`os-explore`: two questions that belong to the user, not to the skill.
+Contract shared by `os-propose`, `os-propose-grill`, `os-review`,
+`os-explore` and `os-wayfind`: two questions that belong to the user, not
+to the skill. `os-wayfind` asks only the web research question.
 
 ## Web research question
 

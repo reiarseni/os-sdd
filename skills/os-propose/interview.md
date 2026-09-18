@@ -4,6 +4,8 @@ Shared by `os-propose` and `os-propose-grill`. Each skill defines how it
 chooses what to ask (thematic rounds vs. decision-tree frontier); this file
 defines what both must cover and how. The TDD/standard question lives in
 `session-options.md`, asked at the end, not as a checklist point here.
+`os-wayfind` also reads this file but applies only "Tool", "Round summary" and
+"Research", scoped to the one decision it is resolving.
 
 ## Goal
 

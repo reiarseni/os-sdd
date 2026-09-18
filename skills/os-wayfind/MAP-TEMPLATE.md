@@ -1,5 +1,7 @@
 # <destination name>
 
+Status: open
+
 ## Destination
 
 <what this map is steering toward, in a sentence or two>
@@ -36,7 +38,7 @@ Blocked by: <other open decision, or none>
 
 ### <stretch>
 
-Decisions: <one-line summaries or refs to "Decisions so far" entries>
+Decisions: "<decision 1>", "<decision 2>"
 Change: <none yet | openspec/changes/<name>>
 
 ## Not yet specified

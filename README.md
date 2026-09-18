@@ -26,8 +26,8 @@ os-explore ──┬─→ os-propose ───────┐
                   → resolved stretches become changes via os-propose
 ```
 
-`os-propose`, `os-propose-grill`, `os-review` and `os-explore` all open by
-asking whether to research the web first, and `os-propose*` asks whether to
+`os-propose`, `os-propose-grill`, `os-review`, `os-explore` and `os-wayfind`
+all ask whether to research the web before their first question, and `os-propose*` asks whether to
 plan with TDD only at the end of the interview — see `shared/session-options.md`.
 
 ## The 8 skills
@@ -41,7 +41,7 @@ plan with TDD only at the end of the interview — see `shared/session-options.m
 | `os-apply` | Change with pending tasks | Code + checked tasks, with evidence per task — standard, or tdd's red→green cycles on the declared seams, per `proposal.md`'s mode |
 | `os-verify` | All tasks done | `VERIFY.md` (`PASS`/`BLOCK`); offers to archive on `PASS` |
 | `os-handoff` | End of session, handoff needed | `HANDOFF.md` rewritten in full (or the exploration's/map's own section) |
-| `os-wayfind` | Work that doesn't fit in one session | Map in `openspec/maps/<name>.md`; ready stretches → `os-propose` |
+| `os-wayfind` | Work that doesn't fit in one session | Map in `openspec/maps/<name>.md`; ready stretches → `os-propose`; `Status: complete` once every stretch has a change |
 
 ## Artifact conventions
 
@@ -142,9 +142,9 @@ The `os-sdd` source directories are never touched by installation.
 `session-options.md`: a contract shared by **two or more** skills — a file
 with a single consumer lives in that skill's own directory instead.
 `session-options.md` is the web-research and TDD questions, shared by
-`os-propose`, `os-propose-grill`, `os-review` and `os-explore`;
-`proposal-flow.md` is everything `os-propose` and `os-propose-grill` do
-around their interviews, so each `SKILL.md` holds only its own interview.
+`os-propose`, `os-propose-grill`, `os-review`, `os-explore` and
+`os-wayfind` (web research only); `proposal-flow.md` is everything
+`os-propose` and `os-propose-grill` do around their interviews, so each `SKILL.md` holds only its own interview.
 `scripts/sync-shared.py` copies each file into the skills that declare it
 under `metadata:` in their frontmatter:
 

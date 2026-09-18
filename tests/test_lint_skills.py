@@ -198,6 +198,15 @@ class LintSkillsTest(unittest.TestCase):
         )
         self.assertTrue(any("os-review" in e and "session-options.md" in e for e in errors), errors)
 
+    def test_wayfind_without_session_options_fails(self):
+        errors = self.lint(
+            body="Before step 1, read `contract.md`.",
+            frontmatter_extra="metadata:\n  shared:\n    - contract.md\n",
+            files={"contract.md": "# Contract\n"},
+            name="os-wayfind",
+        )
+        self.assertTrue(any("os-wayfind" in e and "session-options.md" in e for e in errors), errors)
+
     def test_required_skill_with_session_options_passes(self):
         errors = self.lint(
             body="Before step 1, read `contract.md` and `session-options.md`.",

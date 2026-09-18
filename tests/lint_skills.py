@@ -63,7 +63,7 @@ HEADING_RE = re.compile(r"^#+\s+(?:\d+\.\s+)?(.+?)\s*$", re.MULTILINE)
 
 RETIRED_SKILL_NAMES = ("os-amend-spec", "os-review-spec", "os-propose-drill", "os-apply-tdd")
 RETIRED_NAME_RE = re.compile(r"\b(?:" + "|".join(re.escape(n) for n in RETIRED_SKILL_NAMES) + r")\b")
-REQUIRES_SESSION_OPTIONS = {"os-propose", "os-propose-grill", "os-review", "os-explore"}
+REQUIRES_SESSION_OPTIONS = {"os-propose", "os-propose-grill", "os-review", "os-explore", "os-wayfind"}
 BEFORE_STEP_1_RE = re.compile(r"Before step 1,[^\n]*", re.IGNORECASE)
 MD_FILENAME_RE = re.compile(r"`([\w.-]+\.md)`")
 MODE_FILENAME_RE = re.compile(r"`(modes/[\w.-]+\.md)`")
